@@ -1,0 +1,47 @@
+name: Build
+
+on: [push]
+
+jobs:
+  Linux:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Compile tmdparse
+      run: cc tmdparse.c -o tmdparse
+    - name: Compile tikdecrypt
+      run: cc tikdecrypt.c crypto/aes.c -o tikdecrypt
+    - name: Upload
+      uses: actions/upload-artifact@v2
+      with: 
+        name: linux
+        path: |
+          tikdecrypt
+          tmdparse
+          nus_download.sh
+  macOS:
+    runs-on: macos-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Compile tmdparse (x86_64)
+      run: cc tmdparse.c -target x86_64-apple-darwin-macho -o tmdparse.x86_64
+    - name: Compile tmdparse (arm64)
+      run: cc tmdparse.c -target arm64-apple-darwin-macho -o tmdparse.arm64
+    - name: Merge tmdparse
+      run: lipo tmdparse.arm64 tmdparse.x86_64 -create -output tmdparse
+    - name: Compile tikdecrypt (x86_64)
+      run: cc tikdecrypt.c crypto/aes.c -target x86_64-apple-darwin-macho -o tikdecrypt.x86_64
+    - name: Compile tikdecrypt (arm64)
+      run: cc tikdecrypt.c crypto/aes.c -target arm64-apple-darwin-macho -o tikdecrypt.arm64
+    - name: Merge tikdecrypt
+      run: lipo tikdecrypt.arm64 tikdecrypt.x86_64 -create -output tikdecrypt
+    - name: Upload
+      uses: actions/upload-artifact@v2
+      with: 
+        name: macos
+        path: |
+          tikdecrypt
+          tmdparse
+          nus_download.sh

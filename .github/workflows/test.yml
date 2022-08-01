@@ -1,0 +1,20 @@
+name: Test
+
+on: [push]
+
+jobs:
+  tikdecrypt Test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Compile tikdecrypt
+      run: cc tikdecrypt.c crypto/aes.c -o tikdecrypt
+    - name: Download Internet Channel ticket
+      run: wget http://ccs.cdn.wup.shop.nintendo.net/ccs/download/0001000148414450/cetk
+    - name: Download Internet Channel v1024 banner
+      run: wget http://ccs.cdn.wup.shop.nintendo.net/ccs/download/0001000148414450/00000027
+    - name: Decrypt
+      run: ./tikdecrypt cetk 00000027 0
+    - name: Verify
+      run: sha1sum 00000027.app
