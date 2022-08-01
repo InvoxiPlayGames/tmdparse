@@ -23,4 +23,4 @@ cc tikdecrypt.c crypto/aes.c -o tikdecrypt
 
 These tools are licensed under the MIT license.
 
-This project uses [tiny-AES-c](https://github.com/kokke/tiny-AES-c), licensed under MIT.
+This project uses [tiny-AES-c](https://github.com/kokke/tiny-AES-c), under public domain.
