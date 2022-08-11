@@ -35,4 +35,22 @@ typedef struct _TMDHeader {
     unsigned short padding5;
  } __attribute__((packed)) TMDHeader;
 
+ typedef struct _TMDCertificate2048 {
+    unsigned char signature[0x100];
+    unsigned char padding[0x3C];
+    unsigned char issuer[0x40];
+    unsigned int tag;
+    unsigned char name[0x40];
+    unsigned char public_key[0x13C];
+ } __attribute__((packed)) TMDCertificate2048;
+
+ typedef struct _TMDCertificate4096 {
+    unsigned char signature[0x200];
+    unsigned char padding[0x3C];
+    unsigned char issuer[0x40];
+    unsigned int tag;
+    unsigned char name[0x40];
+    unsigned char public_key[0x13C];
+ } __attribute__((packed)) TMDCertificate4096;
+
  #endif // _TMD_H

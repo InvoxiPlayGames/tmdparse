@@ -19,6 +19,7 @@ void PrintTMDInfo(TMDHeader header) {
     printf("Version: %i\n", BE16(header.title_version));
     printf("Content Count: %i\n", BE16(header.num_contents));
     printf("Boot Content: %i\n", BE16(header.boot_index));
+    printf("Signer: %s (%s)\n", header.issuer, BE(header.signature_type) == 0x10001 ? "RSA-2048" : "RSA-4096");
 }
 
 void PrintContentInfo(TMDContent content) {
@@ -31,6 +32,20 @@ void PrintContentInfo(TMDContent content) {
         printf("%02x", content.SHA1[i]);
     }
     printf("\n");
+}
+
+void PrintCertificateInfo2048(TMDCertificate2048 cert) {
+    printf("   Issuer: %s\n", cert.issuer);
+    printf("   Name: %s\n", cert.name);
+    printf("   Type: RSA-2048\n");
+    printf("   Tag: %08x\n", BE(cert.tag));
+}
+
+void PrintCertificateInfo4096(TMDCertificate4096 cert) {
+    printf("   Issuer: %s\n", cert.issuer);
+    printf("   Name: %s\n", cert.name);
+    printf("   Type: RSA-4096\n");
+    printf("   Tag: %08x\n", BE(cert.tag));
 }
 
 int main(int argc, char **argv) {
@@ -51,6 +66,24 @@ int main(int argc, char **argv) {
         fread(&cnt, sizeof(TMDContent), 1, fp);
         printf("Content %i:\n", i);
         PrintContentInfo(cnt);
+    }
+    int cert_type = 0;
+    int cert_count = 1;
+    while (fread(&cert_type, 1, sizeof(int), fp) == sizeof(int)) {
+        printf("Certificate %i:\n", cert_count);
+        if (BE(cert_type) == 0x10000) {
+            TMDCertificate4096 cert4096;
+            fread(&cert4096, sizeof(TMDCertificate4096), 1, fp);
+            PrintCertificateInfo4096(cert4096);
+        } else if (BE(cert_type) == 0x10001) {
+            TMDCertificate2048 cert2048;
+            fread(&cert2048, sizeof(TMDCertificate2048), 1, fp);
+            PrintCertificateInfo2048(cert2048);
+        } else {
+            printf("Unknown cert type: %08x - can't continue\n", BE(cert_type));
+            break;
+        }
+        cert_count++;
     }
     return 0;
 }
