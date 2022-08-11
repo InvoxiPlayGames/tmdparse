@@ -1,6 +1,15 @@
 #ifndef _TMD_H
 #define _TMD_H
 
+#define TMD_CERT_TYPEMASK 0xFFFF
+#define TMD_CERT_RSA_4096 0
+#define TMD_CERT_RSA_2048 1
+#define TMD_CERT_ECC_B233 2
+
+#define TMD_RSA_2048_SIZE 0x100
+#define TMD_RSA_4096_SIZE 0x200
+#define TMD_ECC_B233_SIZE 0x3C
+
 typedef struct _TMDContent {
     unsigned int id;
     unsigned short index;
@@ -10,8 +19,6 @@ typedef struct _TMDContent {
 } __attribute__((packed)) TMDContent;
 
 typedef struct _TMDHeader {
-    unsigned int signature_type; 
-    unsigned char signature[0x100];
     unsigned char padding[0x3C];
     unsigned char issuer[0x40];
     unsigned char version;
@@ -35,22 +42,28 @@ typedef struct _TMDHeader {
     unsigned short padding5;
  } __attribute__((packed)) TMDHeader;
 
- typedef struct _TMDCertificate2048 {
-    unsigned char signature[0x100];
-    unsigned char padding[0x3C];
-    unsigned char issuer[0x40];
-    unsigned int tag;
-    unsigned char name[0x40];
-    unsigned char public_key[0x13C];
- } __attribute__((packed)) TMDCertificate2048;
+ typedef struct _TMDPublicKeyRSA4096 {
+    unsigned char modulus[TMD_RSA_4096_SIZE];
+    unsigned int public_exponent;
+    unsigned char padding[0x38];
+ } __attribute__((packed)) TMDPublicKeyRSA4096;
 
- typedef struct _TMDCertificate4096 {
-    unsigned char signature[0x200];
+ typedef struct _TMDPublicKeyRSA2048 {
+    unsigned char modulus[TMD_RSA_2048_SIZE];
+    unsigned int public_exponent;
+    unsigned char padding[0x38];
+ } __attribute__((packed)) TMDPublicKeyRSA2048;
+
+ typedef struct _TMDPublicKeyECCB233 {
+    unsigned char modulus[TMD_ECC_B233_SIZE];
+    unsigned char padding[0x3C];
+ } __attribute__((packed)) TMDPublicKeyECCB233;
+
+ typedef struct _TMDCertificateData {
     unsigned char padding[0x3C];
     unsigned char issuer[0x40];
-    unsigned int tag;
+    unsigned int key_type;
     unsigned char name[0x40];
-    unsigned char public_key[0x13C];
- } __attribute__((packed)) TMDCertificate4096;
+ } __attribute__((packed)) TMDCertificateData;
 
  #endif // _TMD_H

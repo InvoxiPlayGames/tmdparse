@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include "tmd.h"
@@ -13,13 +14,46 @@
 #define BE64(i) i
 #endif
 
-void PrintTMDInfo(TMDHeader header) {
+int GetCertTypeSize(int type) {
+    type &= TMD_CERT_TYPEMASK;
+    if (type == TMD_CERT_RSA_4096)
+        return TMD_RSA_4096_SIZE;
+    if (type == TMD_CERT_RSA_2048)
+        return TMD_RSA_2048_SIZE;
+    if (type == TMD_CERT_ECC_B233)
+        return TMD_ECC_B233_SIZE;
+    return -1;
+}
+
+int GetKeyTypeSize(int type) {
+    type &= TMD_CERT_TYPEMASK;
+    if (type == TMD_CERT_RSA_4096)
+        return sizeof(TMDPublicKeyRSA4096);
+    if (type == TMD_CERT_RSA_2048)
+        return sizeof(TMDPublicKeyRSA2048);
+    if (type == TMD_CERT_ECC_B233)
+        return sizeof(TMDPublicKeyECCB233);
+    return -1;
+}
+
+char *GetCertTypeString(int type) {
+    type &= TMD_CERT_TYPEMASK;
+    if (type == TMD_CERT_RSA_4096)
+        return "RSA-4096";
+    if (type == TMD_CERT_RSA_2048)
+        return "RSA-2048";
+    if (type == TMD_CERT_ECC_B233)
+        return "ECC-B233";
+    return "Unknown";
+}
+
+void PrintTMDInfo(int sig_type, TMDHeader header) {
     printf("Title: %016llx\n", BE64(header.title_id));
     printf("IOS: %llu\n", BE64(header.ios_version) & 0xFF);
     printf("Version: %i\n", BE16(header.title_version));
     printf("Content Count: %i\n", BE16(header.num_contents));
     printf("Boot Content: %i\n", BE16(header.boot_index));
-    printf("Signer: %s (%s)\n", header.issuer, BE(header.signature_type) == 0x10001 ? "RSA-2048" : "RSA-4096");
+    printf("Signature Issuer: %s (%s)\n", header.issuer, GetCertTypeString(sig_type));
 }
 
 void PrintContentInfo(TMDContent content) {
@@ -34,55 +68,74 @@ void PrintContentInfo(TMDContent content) {
     printf("\n");
 }
 
-void PrintCertificateInfo2048(TMDCertificate2048 cert) {
+void PrintCertificateInfo(int sig_type, TMDCertificateData cert) {
     printf("   Issuer: %s\n", cert.issuer);
     printf("   Name: %s\n", cert.name);
-    printf("   Type: RSA-2048\n");
-    printf("   Tag: %08x\n", BE(cert.tag));
-}
-
-void PrintCertificateInfo4096(TMDCertificate4096 cert) {
-    printf("   Issuer: %s\n", cert.issuer);
-    printf("   Name: %s\n", cert.name);
-    printf("   Type: RSA-4096\n");
-    printf("   Tag: %08x\n", BE(cert.tag));
+    printf("   Signature Type: %s\n", GetCertTypeString(sig_type));
+    printf("   Key Type: %s\n", GetCertTypeString(BE(cert.key_type)));
 }
 
 int main(int argc, char **argv) {
+    // print usage info if we don't have the right number of args
     if (argc < 2) {
         printf("usage: %s /path/to/title.tmd\n", argv[0]);
         return -1;
     }
+    // open the tmd file
     FILE *fp = fopen(argv[1], "rb");
     if (fp == NULL) {
         printf("failed to open tmd\n");
         return -1;
     }
+    // read the signature type from the file
+    int signature_type;
+    int signature_size;
+    char signature[TMD_RSA_4096_SIZE];
+    fread(&signature_type, sizeof(signature_type), 1, fp);
+    signature_size = GetCertTypeSize(BE(signature_type));
+    if (signature_size < 0) {
+        printf("invalid TMD signature type: %08x - can't continue\n", BE(signature_type));
+        return -1;
+    }
+    // read the signature based on the signature type
+    fread(signature, signature_size, 1, fp);
+    // read the TMD header and print the information from it
     TMDHeader tmd;
     fread(&tmd, sizeof(TMDHeader), 1, fp);
-    PrintTMDInfo(tmd);
+    PrintTMDInfo(BE(signature_type), tmd);
+    // read each individual content from the file and print the information
     for (int i = 0; i < BE16(tmd.num_contents); i++) {
         TMDContent cnt;
         fread(&cnt, sizeof(TMDContent), 1, fp);
         printf("Content %i:\n", i);
         PrintContentInfo(cnt);
     }
+    // read each certificate in the chain and print information
     int cert_type = 0;
     int cert_count = 1;
     while (fread(&cert_type, 1, sizeof(int), fp) == sizeof(int)) {
         printf("Certificate %i:\n", cert_count);
-        if (BE(cert_type) == 0x10000) {
-            TMDCertificate4096 cert4096;
-            fread(&cert4096, sizeof(TMDCertificate4096), 1, fp);
-            PrintCertificateInfo4096(cert4096);
-        } else if (BE(cert_type) == 0x10001) {
-            TMDCertificate2048 cert2048;
-            fread(&cert2048, sizeof(TMDCertificate2048), 1, fp);
-            PrintCertificateInfo2048(cert2048);
-        } else {
+        // read the signature
+        signature_size = GetCertTypeSize(BE(cert_type));
+        if (signature_size < 0) {
             printf("Unknown cert type: %08x - can't continue\n", BE(cert_type));
             break;
         }
+        fread(signature, signature_size, 1, fp);
+        // read the certificate information
+        TMDCertificateData info;
+        fread(&info, sizeof(TMDCertificateData), 1, fp);
+        PrintCertificateInfo(BE(cert_type), info);
+        // read the public key
+        int key_size = GetKeyTypeSize(BE(info.key_type));
+        if (key_size < 0) {
+            printf("Unknown key type: %08x - can't continue\n", BE(info.key_type));
+            break;
+        }
+        // we don't do anything with the key yet, use regular buffer
+        void *blah = malloc(key_size);
+        fread(blah, key_size, 1, fp);
+        free(blah);
         cert_count++;
     }
     return 0;
