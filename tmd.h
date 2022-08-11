@@ -26,7 +26,13 @@ typedef struct _TMDHeader {
     unsigned char signer_crl_version;
     unsigned char vwii;
     unsigned long long ios_version;
-    unsigned long long title_id;
+    union {
+        unsigned long long id;
+        struct {
+            unsigned int pad;
+            unsigned char code[4];
+        } name;
+    } title_id;
     unsigned int title_type;
     unsigned short group_id;
     unsigned short padding2;

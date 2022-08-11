@@ -62,7 +62,7 @@ char *GetRegionString(short region) {
 }
 
 void PrintTMDInfo(int sig_type, TMDHeader header) {
-    printf("Title: %016llx\n", BE64(header.title_id));
+    printf("Title: %016llx (%.4s)\n", BE64(header.title_id.id), header.title_id.name.code);
     printf("IOS: %llu\n", BE64(header.ios_version) & 0xFF);
     printf("Version: %i\n", BE16(header.title_version));
     printf("Region: %s\n", GetRegionString(BE16(header.region)));
