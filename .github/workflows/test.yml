@@ -3,18 +3,18 @@ name: Test
 on: [push]
 
 jobs:
-  tikdecrypt:
+  test:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
       uses: actions/checkout@v3
+    - name: Compile tmdparse
+      run: cc tmdparse.c -o tmdparse
     - name: Compile tikdecrypt
       run: cc tikdecrypt.c crypto/aes.c -o tikdecrypt
-    - name: Download Internet Channel ticket
-      run: wget http://ccs.cdn.wup.shop.nintendo.net/ccs/download/0001000148414450/cetk
-    - name: Download Internet Channel v1024 banner
-      run: wget http://ccs.cdn.wup.shop.nintendo.net/ccs/download/0001000148414450/00000027
-    - name: Decrypt
-      run: ./tikdecrypt cetk 00000027 0
-    - name: Verify
-      run: sha1sum 00000027.app
+    - name: Download, decrypt and verify IOS9
+      run: ./nus_download.sh 0000000100000009
+    - name: Download, decrypt and verify System Menu
+      run: ./nus_download.sh 0000000100000002
+    - name: Download, decrypt and verify Internet Channel
+      run: ./nus_download.sh 0001000148414450

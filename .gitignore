@@ -1,3 +1,7 @@
+.DS_Store
 titles/
+*.tik
+*.app
+0000*
 tmdparse
 tikdecrypt
