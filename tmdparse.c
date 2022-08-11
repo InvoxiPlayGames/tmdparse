@@ -47,10 +47,29 @@ char *GetCertTypeString(int type) {
     return "Unknown";
 }
 
+char *GetRegionString(short region) {
+    if (region == 0)
+        return "Japan";
+    if (region == 1)
+        return "America";
+    if (region == 2)
+        return "Europe";
+    if (region == 3)
+        return "Region Free";
+    if (region == 4)
+        return "Korea";
+    return "Unknown";
+}
+
 void PrintTMDInfo(int sig_type, TMDHeader header) {
     printf("Title: %016llx\n", BE64(header.title_id));
     printf("IOS: %llu\n", BE64(header.ios_version) & 0xFF);
     printf("Version: %i\n", BE16(header.title_version));
+    printf("Region: %s\n", GetRegionString(BE16(header.region)));
+    if (BE(header.access_rights) & 1)
+        printf("Full AHBPROT Access\n");
+    if (BE(header.access_rights) & 2)
+        printf("Full DVD Access\n");
     printf("Content Count: %i\n", BE16(header.num_contents));
     printf("Boot Content: %i\n", BE16(header.boot_index));
     printf("Signature Issuer: %s (%s)\n", header.issuer, GetCertTypeString(sig_type));
