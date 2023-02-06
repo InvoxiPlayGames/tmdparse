@@ -2,6 +2,9 @@
 titles/
 *.tik
 *.app
+*.bin
 0000*
 tmdparse
 tikdecrypt
+bindecrypt
+*.exe

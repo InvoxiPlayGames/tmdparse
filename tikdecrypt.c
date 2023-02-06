@@ -1,11 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 #define CBC 1
 #define ECB 0
 #define CTR 0
 #include "crypto/aes.h"
+#include "tmd.h"
 #include "cetk.h"
 
 #ifndef SHOULD_BE_BE
@@ -54,17 +56,28 @@ void DecryptContent(unsigned char *title_key, unsigned short content_index, unsi
     AES_CBC_decrypt_buffer(&ctx, data, length);
 }
 
+int GetCertTypeSize(int type) {
+    type &= TMD_CERT_TYPEMASK;
+    if (type == TMD_CERT_RSA_4096)
+        return TMD_RSA_4096_SIZE;
+    if (type == TMD_CERT_RSA_2048)
+        return TMD_RSA_2048_SIZE;
+    if (type == TMD_CERT_ECC_B233)
+        return TMD_ECC_B233_SIZE;
+    return -1;
+}
+
 int main(int argc, char **argv) {
     int index = 0;
     unsigned char title_key[0x10] = { 0 };
 
-    if (argc < 4) {
-        printf("usage: %s /path/to/ticket.cetk /path/to/content content_index\n", argv[0]);
+    if (argc < 5) {
+        printf("usage: %s /path/to/ticket /path/to/content /path/to/tmd content_index\n", argv[0]);
         return -1;
     }
 
     // parse the index
-    sscanf(argv[3], "%i", &index);
+    sscanf(argv[4], "%i", &index);
 
     // open the cetk file
     FILE *tikfile = fopen(argv[1], "rb");
@@ -77,6 +90,41 @@ int main(int argc, char **argv) {
     fread(&ticket, sizeof(CETK), 1, tikfile);
     DeriveTitleKey(ticket, title_key);
     fclose(tikfile);
+
+    // open the TMD file
+    FILE *tmdfile = fopen(argv[3], "rb");
+    if (tmdfile == NULL) {
+        printf("failed to open tmd\n");
+        return -1;
+    }
+    // parse the tmd and find our content
+    TMDHeader tmd;
+    // skip over the signature
+    int signature_type;
+    fread(&signature_type, sizeof(signature_type), 1, tmdfile);
+    int signature_size = GetCertTypeSize(BE(signature_type));
+    if (signature_size < 0) {
+        printf("invalid TMD signature type: %08x - can't continue\n", BE(signature_type));
+        return -1;
+    }
+    fseek(tmdfile, signature_size, SEEK_CUR);
+    // read the TMD header
+    fread(&tmd, sizeof(TMDHeader), 1, tmdfile);
+    TMDContent cnt;
+    bool found_cnt = false;
+    // read each individual content from the file and print the information
+    for (int i = 0; i < BE16(tmd.num_contents); i++) {
+        fread(&cnt, sizeof(TMDContent), 1, tmdfile);
+        if (BE16(cnt.index) == index) {
+            found_cnt = true;
+            break;
+        }
+    }
+    if (!found_cnt) {
+        printf("couldn't find equivalent content in provided TMD file - can't continue\n");
+        return -1;
+    }
+    fclose(tmdfile);
 
     // open the content file
     FILE *cntfile = fopen(argv[2], "rb");
@@ -103,7 +151,8 @@ int main(int argc, char **argv) {
         return -1;
     }
     // write the decrypted contents to the new file
-    fwrite(buffer, 1, filesize, newfile);
+    // use the filesize from the TMD to get the correct output
+    fwrite(buffer, 1, BE64(cnt.size), newfile);
     // free our files and buffers
     fclose(newfile);
     fclose(cntfile);

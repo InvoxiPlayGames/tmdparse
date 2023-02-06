@@ -57,7 +57,7 @@ content_sha_regex="SHA1: ([0-f]{40})"
        echo "Downloading content ${PREV_INDEX} (${PREV_CID})..."
        curl -s --user-agent "wii libnup/1.0" "$NUS_BASE/$TITLE_ID/$PREV_CID" -o $OUTPUT_DIR/$PREV_CID > /dev/null
        echo "Decrypting content $PREV_CID..."
-       ./tikdecrypt $OUTPUT_DIR/cetk $OUTPUT_DIR/$PREV_CID ${PREV_INDEX}
+       ./tikdecrypt $OUTPUT_DIR/cetk $OUTPUT_DIR/$PREV_CID $OUTPUT_DIR/tmd ${PREV_INDEX}
        # delete the encrypted content since... there isn't really a need for it
        rm $OUTPUT_DIR/$PREV_CID
     fi
