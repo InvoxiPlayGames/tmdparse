@@ -12,12 +12,15 @@ jobs:
       run: cc tmdparse.c -o tmdparse
     - name: Compile tikdecrypt
       run: cc tikdecrypt.c crypto/aes.c -o tikdecrypt
+    - name: Compile bindecrypt
+      run: cc bindecrypt.c crypto/aes.c -o bindecrypt
     - name: Upload
       uses: actions/upload-artifact@v2
       with: 
         name: linux
         path: |
           tikdecrypt
+          bindecrypt
           tmdparse
           nus_download.sh
   macOS:
@@ -37,6 +40,12 @@ jobs:
       run: cc tikdecrypt.c crypto/aes.c -target arm64-apple-darwin-macho -o tikdecrypt.arm64
     - name: Merge tikdecrypt
       run: lipo tikdecrypt.arm64 tikdecrypt.x86_64 -create -output tikdecrypt
+    - name: Compile bindecrypt (x86_64)
+      run: cc bindecrypt.c crypto/aes.c -target x86_64-apple-darwin-macho -o bindecrypt.x86_64
+    - name: Compile bindecrypt (arm64)
+      run: cc bindecrypt.c crypto/aes.c -target arm64-apple-darwin-macho -o bindecrypt.arm64
+    - name: Merge bindecrypt
+      run: lipo bindecrypt.arm64 bindecrypt.x86_64 -create -output bindecrypt
     - name: Upload
       uses: actions/upload-artifact@v2
       with: 
@@ -44,4 +53,32 @@ jobs:
         path: |
           tikdecrypt
           tmdparse
+          bindecrypt
           nus_download.sh
+  Windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: mingw64
+        install: make mingw-w64-x86_64-gcc
+    - name: Compile tmdparse
+      run: gcc tmdparse.c -o tmdparse.exe
+    - name: Compile tikdecrypt
+      run: gcc tikdecrypt.c crypto/aes.c -o tikdecrypt.exe
+    - name: Compile bindecrypt
+      run: gcc bindecrypt.c crypto/aes.c -o bindecrypt.exe
+    - name: Upload
+      uses: actions/upload-artifact@v2
+      with: 
+        name: windows-mingw64
+        path: |
+          tikdecrypt.exe
+          bindecrypt.exe
+          tmdparse.exe
