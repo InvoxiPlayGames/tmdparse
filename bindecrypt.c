@@ -185,9 +185,9 @@ int main(int argc, char **argv) {
     // detect if we're an OTP file or keys.bin file
     // first byte of the common key
     if (keys[0x14] == 0xEB) {
-        otp = &keys;
+        otp = (OTP *)&keys;
     } else {
-        KeysBIN *bin = &keys;
+        KeysBIN *bin = (KeysBIN *)&keys;
         otp = &(bin->otp);
     }
     printf("PRNG key for Console ID %08x: ", BE(otp->ng_id));
