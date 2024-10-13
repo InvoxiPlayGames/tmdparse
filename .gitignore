@@ -1,4 +1,6 @@
 .DS_Store
+.vscode
+*.dSYM
 titles/
 *.tik
 *.app
@@ -8,3 +10,4 @@ tmdparse
 tikdecrypt
 bindecrypt
 *.exe
+*_.*

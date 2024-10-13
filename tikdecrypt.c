@@ -7,8 +7,9 @@
 #define ECB 0
 #define CTR 0
 #include "crypto/aes.h"
+#include "crypto/sha1.h"
 #include "tmd.h"
-#include "cetk.h"
+#include "ticket.h"
 
 #ifndef SHOULD_BE_BE
 #define BE16(i) ((((i) & 0xFF) << 8 | ((i) >> 8) & 0xFF) & 0xFFFF)
@@ -29,15 +30,15 @@ static unsigned char common_keys[3][0x10] = {
     { 0x30, 0xbf, 0xc7, 0x6e, 0x7c, 0x19, 0xaf, 0xbb, 0x23, 0x16, 0x33, 0x30, 0xce, 0xd7, 0xc2, 0x8d }
 };
 
-void DeriveTitleKey(CETK cetk, unsigned char * derived_key) {
+void DeriveTitleKey(WiiTicket tik, unsigned char * derived_key) {
     struct AES_ctx ctx;
     unsigned char iv[0x10] = { 0 };
     // copy the title key into the buffer
-    memcpy(derived_key, cetk.title_key, 0x10);
+    memcpy(derived_key, tik.title_key, 0x10);
     // copy the title id into the IV
-    memcpy(iv, &cetk.title_id, sizeof(cetk.title_id));
-    // initialise our aes context using the common key specified in the cetk
-    AES_init_ctx(&ctx, common_keys[cetk.key_index]);
+    memcpy(iv, &tik.title_id, sizeof(tik.title_id));
+    // initialise our aes context using the common key specified in the tik
+    AES_init_ctx(&ctx, common_keys[tik.key_index]);
     AES_ctx_set_iv(&ctx, iv);
     // decrypt the title key
     AES_CBC_decrypt_buffer(&ctx, derived_key, 0x10);
@@ -70,11 +71,17 @@ int GetCertTypeSize(int type) {
 int main(int argc, char **argv) {
     int index = 0;
     unsigned char title_key[0x10] = { 0 };
+    bool do_hash = true;
 
     if (argc < 5) {
         printf("usage: %s /path/to/ticket /path/to/content /path/to/tmd content_index\n", argv[0]);
         return -1;
     }
+
+    // dont do the hash if they tell us not to
+    // this is to make nus downloading faster since it can verify the hash afterwards
+    if (argc == 6 && strcmp(argv[5], "--noHash") == 0)
+        do_hash = false;
 
     // parse the index
     sscanf(argv[4], "%i", &index);
@@ -85,9 +92,10 @@ int main(int argc, char **argv) {
         printf("failed to open ticket\n");
         return -1;
     }
+
     // parse the cetk and get the title key
-    CETK ticket;
-    fread(&ticket, sizeof(CETK), 1, tikfile);
+    WiiTicket ticket;
+    fread(&ticket, sizeof(WiiTicket), 1, tikfile);
     DeriveTitleKey(ticket, title_key);
     fclose(tikfile);
 
@@ -97,8 +105,10 @@ int main(int argc, char **argv) {
         printf("failed to open tmd\n");
         return -1;
     }
+
     // parse the tmd and find our content
     TMDHeader tmd;
+
     // skip over the signature
     int signature_type;
     fread(&signature_type, sizeof(signature_type), 1, tmdfile);
@@ -110,6 +120,7 @@ int main(int argc, char **argv) {
     fseek(tmdfile, signature_size, SEEK_CUR);
     // read the TMD header
     fread(&tmd, sizeof(TMDHeader), 1, tmdfile);
+
     TMDContent cnt;
     bool found_cnt = false;
     // read each individual content from the file and print the information
@@ -132,24 +143,44 @@ int main(int argc, char **argv) {
         printf("failed to open content\n");
         return -1;
     }
+
     // get the filesize
     fseek(cntfile, 0, SEEK_END);
     int filesize = ftell(cntfile);
     fseek(cntfile, 0, SEEK_SET);
+
     // read the entire file into memory
     unsigned char* buffer = malloc(filesize);
     fread(buffer, 1, filesize, cntfile);
+
     // decrypt the file in memory
     DecryptContent(title_key, index, buffer, filesize);
+
+    // verify the SHA-1 of the file
+    if (do_hash) {
+        SHA1_CTX s1;
+        uint8_t digest[0x14];
+        SHA1_Init(&s1);
+        SHA1_Update(&s1, buffer, BE64(cnt.size));
+        SHA1_Final(&s1, digest);
+
+        //if (strcmp(cnt.SHA1, digest) == 0) { :trollface:
+        if (memcmp(cnt.SHA1, digest, sizeof(digest)) != 0) {
+            printf("! checksum mismatch! wrong key? !\n");
+        }
+    }
+
     // append .app to the existing filename
     char*newname = malloc(strlen(argv[2]) + 5);
     sprintf(newname, "%s.app", argv[2]);
+
     // open the new file for writing
     FILE *newfile = fopen(newname, "wb+");
     if (newfile == NULL) {
         printf("failed to create output file\n");
         return -1;
     }
+
     // write the decrypted contents to the new file
     // use the filesize from the TMD to get the correct output
     fwrite(buffer, 1, BE64(cnt.size), newfile);

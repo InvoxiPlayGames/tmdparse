@@ -6,7 +6,7 @@ typedef struct _TicketLimit {
     unsigned int usage;
 } TicketLimit;
 
-typedef struct _CETK {
+typedef struct _WiiTicket {
     unsigned int signature_type;
     unsigned char signature[0x100];
     unsigned char padding[0x3C];
@@ -28,6 +28,6 @@ typedef struct _CETK {
     unsigned char access_permissions[0x40];
     unsigned short padding3;
     TicketLimit limits[8];
-} __attribute__((packed)) CETK;
+} __attribute__((packed)) WiiTicket;
 
 #endif
