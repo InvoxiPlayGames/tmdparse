@@ -7,19 +7,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Compile tmdparse
       run: cc tmdparse.c -o tmdparse
 
     - name: Compile tikdecrypt
-      run: cc tikdecrypt.c crypto/aes.c -o tikdecrypt
+      run: cc tikdecrypt.c crypto/aes.c crypto/sha1.c -o tikdecrypt
 
     - name: Compile bindecrypt
-      run: cc bindecrypt.c crypto/aes.c -o bindecrypt
+      run: cc bindecrypt.c crypto/aes.c crypto/sha1.c -o bindecrypt
 
     - name: Upload
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with: 
         name: linux
         path: |
@@ -32,7 +32,7 @@ jobs:
     runs-on: macos-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Compile tmdparse (x86_64)
       run: cc tmdparse.c -target x86_64-apple-darwin-macho -o tmdparse.x86_64
@@ -42,21 +42,21 @@ jobs:
       run: lipo tmdparse.arm64 tmdparse.x86_64 -create -output tmdparse
 
     - name: Compile tikdecrypt (x86_64)
-      run: cc tikdecrypt.c crypto/aes.c -target x86_64-apple-darwin-macho -o tikdecrypt.x86_64
+      run: cc tikdecrypt.c crypto/aes.c crypto/sha1.c -target x86_64-apple-darwin-macho -o tikdecrypt.x86_64
     - name: Compile tikdecrypt (arm64)
-      run: cc tikdecrypt.c crypto/aes.c -target arm64-apple-darwin-macho -o tikdecrypt.arm64
+      run: cc tikdecrypt.c crypto/aes.c crypto/sha1.c -target arm64-apple-darwin-macho -o tikdecrypt.arm64
     - name: Merge tikdecrypt
       run: lipo tikdecrypt.arm64 tikdecrypt.x86_64 -create -output tikdecrypt
 
     - name: Compile bindecrypt (x86_64)
-      run: cc bindecrypt.c crypto/aes.c -target x86_64-apple-darwin-macho -o bindecrypt.x86_64
+      run: cc bindecrypt.c crypto/aes.c crypto/sha1.c -target x86_64-apple-darwin-macho -o bindecrypt.x86_64
     - name: Compile bindecrypt (arm64)
-      run: cc bindecrypt.c crypto/aes.c -target arm64-apple-darwin-macho -o bindecrypt.arm64
+      run: cc bindecrypt.c crypto/aes.c crypto/sha1.c -target arm64-apple-darwin-macho -o bindecrypt.arm64
     - name: Merge bindecrypt
       run: lipo bindecrypt.arm64 bindecrypt.x86_64 -create -output bindecrypt
 
     - name: Upload
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with: 
         name: macos
         path: |
@@ -72,7 +72,7 @@ jobs:
         shell: msys2 {0}
     steps:
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup MSYS2
       uses: msys2/setup-msys2@v2
@@ -84,13 +84,13 @@ jobs:
       run: gcc tmdparse.c -o tmdparse.exe
 
     - name: Compile tikdecrypt
-      run: gcc tikdecrypt.c crypto/aes.c -o tikdecrypt.exe
+      run: gcc tikdecrypt.c crypto/aes.c crypto/sha1.c -o tikdecrypt.exe
 
     - name: Compile bindecrypt
-      run: gcc bindecrypt.c crypto/aes.c -o bindecrypt.exe
-      
+      run: gcc bindecrypt.c crypto/aes.c crypto/sha1.c -o bindecrypt.exe
+
     - name: Upload
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with: 
         name: windows-mingw64
         path: |

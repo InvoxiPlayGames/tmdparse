@@ -9,11 +9,8 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
-    - name: Compile tmdparse
-      run: cc tmdparse.c -o tmdparse
-
-    - name: Compile tikdecrypt
-      run: cc tikdecrypt.c crypto/aes.c -o tikdecrypt
+    - name: Compile all tools
+      run: ./build_all.sh
 
     - name: Download, decrypt and verify IOS9
       run: ./nus_download.sh 0000000100000009
@@ -23,4 +20,3 @@ jobs:
 
     - name: Download, decrypt and verify Internet Channel
       run: ./nus_download.sh 0001000148414450
-      
